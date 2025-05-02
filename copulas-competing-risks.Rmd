@@ -6,26 +6,25 @@ output:
   html_document: default
 ---
 
-```{r setup}
+```{r}
+# libraries
 library(copula)
 library(fitdistrplus)
 library(survival)
 library(ggplot2)
-
 set.seed(6)
 ```
 
-# Part 1: Frank Copula & Gamma Marginals
 
 # Data Generation
 
 ## Generate Synthetic Data with Frank Copula
 
-We examine the use of a Frank copula to model dependency between two competing risks: firm-specific failure (a company failing on its own) and systemic failure (failure due to wider market or economic problems). The Frank copula provides a symmetric dependence structure, meaning that dependence is modelled evenly across the entire distribution — neither early nor late failures are disproportionately influential.
+We examine the use of a Frank copula to model dependency between two competing risks: loan default (the borrower failing to pay) and loan repayment (the borrower successfully repaying the loan in full). The Frank copula provides a symmetric dependence structure, meaning that dependence is modelled evenly across the entire distribution — neither early nor late loan closures are disproportionately influential.
 
-This setting reflects real-world scenarios where the two failure types may be influenced by shared but general macroeconomic or market factors, without a strong directional bias. For example, a company's own financial problems and wider market conditions might get worse at the same time, with both types of risk increasing together regardless of time. The Frank copula is ideal in such cases as it lacks tail dependence and instead models a more balanced, global dependency between variables.
+This setting reflects real-world scenarios where the two loan closure types may be influenced by shared economic or market factors, without a strong directional bias. For example, improving economic conditions may simultaneously reduce default risk and accelerate repayment, or worsening conditions may delay repayment and increase default likelihood, meaning that both outcomes are similarly impacted across time. The Frank copula is ideal in such cases as it lacks tail dependence and instead models a more balanced, global dependency between variables.
 
-The two failure times are drawn from gamma distributions, where both firm-specific and systemic risks are assigned the same marginal parameters to easily see patterns caused by their dependency: shape = 2 and rate = 4, corresponding to a mean failure time of 0.5 for each component. 
+The two loan times are drawn from gamma distributions, where both loan default and repayment are assigned the same marginal parameters to easily see patterns caused by their dependency: shape = 2 and rate = 4, corresponding to a mean closure time of 0.5 for each component. 
 
 ```{r}
 # setting parameters
@@ -50,46 +49,49 @@ u <- rCopula(n, frank_cop)
 T1 <- qgamma(u[, 1], shape = gamma_shape1, rate = gamma_rate1)
 T2 <- qgamma(u[, 2], shape = gamma_shape2, rate = gamma_rate2)
 
-# failure time 
-default_time <- pmin(T1, T2)
+# loan closure time 
+closure_time <- pmin(T1, T2)
 event_type <- ifelse(T1 < T2, 1, 2)
 
-simulated_data <- data.frame(default_time, event_type)
+simulated_data <- data.frame(closure_time, event_type)
 #head(simulated_data)
 
 # copula samples
 plot(u, main = "Copula Samples (Frank)", xlab = "u1", ylab = "u2", pch = 20, col = rgb(0, 0, 1, 0.2))
+
+# frank_scatter.png
 ```
 
 
 
 
 
-## Visualise Default Times by Event Type
+## Visualise Closure Times by Event Type
 
-A histogram of default times coloured by event type shows the distribution of observed failures from firm-specific and systemic causes. Because both marginals are identically distributed, the differentiation between causes is driven entirely by the dependency structure introduced by the copula, where the distribution of causes is more balanced over time.
+A histogram of closure times coloured by event type shows the distribution of observed loan closures from loan default and loan repayment. Because both marginals are identically distributed, the differentiation between causes is driven entirely by the dependency structure introduced by the copula, where the distribution of causes is more balanced over time.
 
 ```{r}
 # default times
-ggplot(simulated_data, aes(x = default_time, fill = factor(event_type))) +
+ggplot(simulated_data, aes(x = closure_time, fill = factor(event_type))) +
   geom_histogram(position = "identity", bins = 50, alpha = 0.6) +
-  labs(title = "Histogram of Default Times", x = "Time", fill = "Event Type") +
+  labs(title = "Histogram of Closure Times", x = "Time", fill = "Event Type") +
   scale_fill_manual(values = c("steelblue", "tomato"),
-                    labels = c("Firm-specific", "Systemic"))
+                    labels = c("Loan Default", "Loan Repayment"))
 
+# histogram_closure_times.png
 ```
 
 
 # Fit Marginals
 
-## Extract and Fit Distributions to Each Failure Cause
+## Extract and Fit Distributions to Each Loan Closure Cause
 
-Fitting the marginals for each failure cause using a selection of candidate distributions (exponential, weibull, gamma, and log-normal), the gamma distribution was correctly identified as the best fit in both cases. This allows us to move forward with parameter estimation under correct distributional assumptions.
+Fitting the marginals for each loan closure cause using a selection of candidate distributions (exponential, weibull, gamma, and log-normal), the gamma distribution was correctly identified as the best fit in both cases. This allows us to move forward with parameter estimation under correct distributional assumptions.
 
 ```{r}
-# firm and systemic
-firm_specific <- subset(simulated_data, event_type == 1)$default_time
-systemic      <- subset(simulated_data, event_type == 2)$default_time
+# default and repayment
+default <- subset(simulated_data, event_type == 1)$closure_time
+repayment <- subset(simulated_data, event_type == 2)$closure_time
 
 # candidate distributions
 fit_candidates <- c("exp", "weibull", "gamma", "lnorm")
@@ -108,21 +110,21 @@ fit_dist <- function(data) {
   )
 }
 
-fit_firm     <- fit_dist(firm_specific)
-fit_systemic <- fit_dist(systemic)
+fit_default <- fit_dist(default)
+fit_repayment <- fit_dist(repayment)
 
 # best fits
-cat("Firm-specific best fit:", fit_firm$best_fit, "\n")
-cat("Systemic best fit:", fit_systemic$best_fit, "\n")
+cat("Loan Default best fit:", fit_default$best_fit, "\n")
+cat("Loan Repayment best fit:", fit_repayment$best_fit, "\n")
 ```
 
 
 ```{r}
 # parameter values for the best fits
-cat("Firm-specific gamma fit: shape =", fit_firm$parameters["shape"], 
-    " rate =", fit_firm$parameters["rate"], "\n")
-cat("Systemic gamma fit: shape =", fit_systemic$parameters["shape"], 
-    " rate =", fit_systemic$parameters["rate"], "\n")
+cat("Loan Default gamma fit: shape =", fit_default$parameters["shape"], 
+    " rate =", fit_default$parameters["rate"], "\n")
+cat("Loan Repayment gamma fit: shape =", fit_repayment$parameters["shape"], 
+    " rate =", fit_repayment$parameters["rate"], "\n")
 ```
 
 
@@ -130,30 +132,32 @@ cat("Systemic gamma fit: shape =", fit_systemic$parameters["shape"],
 
 These plots help visually assess how well the fitted distributions match the empirical data.
 
-Q-Q plots comparing the empirical data to the fitted gamma marginals support this result visually. Both firm-specific and systemic risks follow the gamma quantiles closely, with minor deviations in the upper tail.
+Q-Q plots comparing the empirical data to the fitted gamma marginals support this result visually. Both loan default and loan repayment risks follow the gamma quantiles closely, with minor deviations in the upper tail.
 
 ```{r}
 # Q-Q plots
 par(mfrow = c(1, 2))
-qqplot(qgamma(ppoints(length(firm_specific)), 
-              shape = fit_firm$parameters["shape"], 
-              rate  = fit_firm$parameters["rate"]),
-       firm_specific,
-       main = "Q-Q Plot: Firm-specific (Gamma)",
+qqplot(qgamma(ppoints(length(default)), 
+              shape = fit_default$parameters["shape"], 
+              rate  = fit_default$parameters["rate"]),
+       default,
+       main = "Q-Q Plot: Default Fit (Gamma)",
        xlab = "Theoretical Quantiles", ylab = "Sample Quantiles")
 abline(0, 1, col = "red")
 
-qqplot(qgamma(ppoints(length(systemic)), 
-              shape = fit_systemic$parameters["shape"], 
-              rate  = fit_systemic$parameters["rate"]),
-       systemic,
-       main = "Q-Q Plot: Systemic (Gamma)",
+qqplot(qgamma(ppoints(length(repayment)), 
+              shape = fit_repayment$parameters["shape"], 
+              rate  = fit_repayment$parameters["rate"]),
+       repayment,
+       main = "Q-Q Plot: Repayment Fit (Gamma)",
        xlab = "Theoretical Quantiles", ylab = "Sample Quantiles")
 abline(0, 1, col = "red")
+
+# qqplots2.png
 ```
 # Estimate Parameters
 
-The Frank copula was chosen for this stage of the model because it captures symmetric dependence between risks, meaning that association between failure times is modelled consistently across the entire distribution, rather than being concentrated in the tails. This makes it particularly appropriate for competing risks scenarios where the interaction between failure types is not limited to early or extreme events.
+The Frank copula was chosen for this stage of the model because it captures symmetric dependence between risks, meaning that association between loan closure times is modelled consistently across the entire distribution, rather than being concentrated in the tails. This makes it particularly appropriate for competing risks scenarios where the interaction between loan closure types is not limited to early or extreme events.
 
 ## Single Parameter Estimate (MLE)
 
@@ -195,7 +199,7 @@ loglik_full <- function(params, data) {
   
   log_lik <- 0
   for (i in 1:nrow(data)) {
-    t    <- data$default_time[i]
+    t    <- data$closure_time[i]
     type <- data$event_type[i]
     
     F1 <- pgamma(t, shape = shape1, rate = rate1)
@@ -323,6 +327,8 @@ We now visualise the distribution of bootstrap estimates for each parameter. Eac
 ```{r}
 
 par(mfrow = c(1,1))
+
+# theta.png
 # Theta
 hist(boot_df$theta, breaks = 30, col = "lightblue",
      main = expression(paste("Theta Estimates")),
@@ -332,6 +338,8 @@ abline(v = mle_theta, col = "red", lwd = 2, lty = 2)
 legend("topright", legend = c("True Value", "MLE Estimate"),
        col = c("black", "red"), lty = c(2, 2), lwd = 2)
 
+
+# shape1.png
 # Shape1
 hist(boot_df$shape1, breaks = 30, col = "lightgreen",
      main = expression(paste("Shape[1] Estimates")),
@@ -341,6 +349,8 @@ abline(v = mle_shape1, col = "red", lwd = 2, lty = 2)
 legend("topright", legend = c("True Value", "MLE Estimate"),
        col = c("black", "red"), lty = c(2, 2), lwd = 2)
 
+
+# rate1.png
 # Rate1
 hist(boot_df$rate1, breaks = 30, col = "salmon",
      main = expression(paste("Rate[1] Estimates")),
@@ -350,6 +360,8 @@ abline(v = mle_rate1, col = "red", lwd = 2, lty = 2)
 legend("topright", legend = c("True Value", "MLE Estimate"),
        col = c("black", "red"), lty = c(2, 2), lwd = 2)
 
+
+# shape2.png
 # Shape2
 hist(boot_df$shape2, breaks = 30, col = "plum",
      main = expression(paste("Shape[2] Estimates")),
@@ -359,6 +371,8 @@ abline(v = mle_shape2, col = "red", lwd = 2, lty = 2)
 legend("topright", legend = c("True Value", "MLE Estimate"),
        col = c("black", "red"), lty = c(2, 2), lwd = 2)
 
+
+# rate2.png
 # Rate2
 hist(boot_df$rate2, breaks = 30, col = "khaki",
      main = expression(paste("Rate[2] Estimates")),
@@ -381,10 +395,10 @@ This synthetic implementation serves as a controlled environment to test and dem
 
 ## Simulation Design
 
-We generated 10,000 observations representing time-to-event data for two competing risks: **firm-specific failure** and **systemic failure**. Dependence between the two failure types was introduced using a **Frank copula** with a known parameter of **θ = 2**, chosen for its ability to model **symmetric dependence** — appropriate for scenarios where shared risk factors influence both causes consistently over time, without concentrating in the tails.
+We generated 10,000 observations representing time-to-event data for two competing risks: **loan defaults** and **loan repayments**. Dependence between the two loan closure types was introduced using a **Frank copula** with a known parameter of **θ = 2**, chosen for its ability to model **symmetric dependence** — appropriate for scenarios where shared risk factors influence both causes consistently over time, without concentrating in the tails.
 
 
-The marginal distributions for both risks were set to **gamma**, with $\alpha_1 = 2, \beta_1 = 4$ for firm-specific failure and $\alpha_2 = 2, \beta_2 = 4$ for systemic failure. Observed default times were the minimum of the two, with the cause recorded as the corresponding event type.
+The marginal distributions for both risks were set to **gamma**, with $\alpha_1 = 2, \beta_1 = 4$ for loan default and $\alpha_2 = 2, \beta_2 = 4$ for loan repayment. Observed closure times were the minimum of the two, with the cause recorded as the corresponding event type.
 
 
 
@@ -392,7 +406,7 @@ The marginal distributions for both risks were set to **gamma**, with $\alpha_1 
 
 -   **Copula Scatterplot**: The Frank copula generated balanced dependence, visible as even dispersion around the diagonal in the $u_1–u_2$ scatterplot, without clustering in the tails.
 
--   **Histogram of Default Times**: Failures from both causes were distributed relatively evenly over time, consistent with the identical gamma marginals.
+-   **Histogram of Default Times**: loan closures from both causes were distributed relatively evenly over time, consistent with the identical gamma marginals.
 
 -   **Q-Q Plots**: Gamma distribution assumptions for both causes were visually supported, with empirical quantiles aligning well with the fitted distributions.
 
@@ -411,7 +425,7 @@ The marginal distributions for both risks were set to **gamma**, with $\alpha_1 
 
 
 
--   **MLE Estimates** showed a consistent pattern of underestimating the shape parameters and $\theta$, with slight overestimation of the rate parameters. This reflects moderate bias, particularly in the copula component.
+-   **MLE Estimates** showed a consistent pattern of underestimating the true shape parameters and $\theta$, with slight overestimation of the rate parameters. This reflects moderate bias, particularly in the copula component.
 
 -   **Bootstrap Means** confirmed the stability of the MLE estimates, with distributions tightly clustered around the MLEs, but not the true values, due to the bias of our estimates.
 
@@ -441,6 +455,16 @@ Limitations:
 - There is increased estimation complexity. Five parameters are being estimated simultaneously. The gamma distribution involves two interacting parameters (shape and rate), which can lead to identifiability issues. Small changes in one can compensate for changes in the other, making precise estimation harder.
 
 Despite these limitations, the simulation provides valuable insight into the strengths and challenges of using the Frank copula for competing risks modelling, and forms a useful benchmark for further exploration with real-world data or alternative copulas, perhaps with stronger tail dependency, such as the Clayton copula.
+
+
+
+
+
+
+
+
+
+
 
 
 # Part 2: Clayton Copula & Exponential Marginals
