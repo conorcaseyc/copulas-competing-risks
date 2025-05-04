@@ -468,13 +468,14 @@ Despite these limitations, the simulation provides valuable insight into the str
 
 
 
+
 # Part 2: Clayton Copula & Exponential Marginals
 
 ## Data Generation
 
 ### Generate Synthetic Data with Clayton Copula
 
-We simulate two dependent failure times (T1, T2) representing firm-specific and systemic risks using a Clayton copula to induce positive dependence.
+We simulate two dependent failure times (T1, T2) representing loan repayment and loan default (the competing risks) using a Clayton copula to induce positive dependence.
 
 ```{r data-generation}
 # Parameters
@@ -491,12 +492,12 @@ u <- rCopula(n, clayton_cop)
 T1 <- qexp(u[, 1], rate = exp_rate1)
 T2 <- qexp(u[, 2], rate = exp_rate2)
 
-# Observed failure time and cause
-default_time <- pmin(T1, T2)
-event_type <- ifelse(T1 < T2, 1, 2)  # 1 = firm-specific, 2 = systemic
+# Observed loan closure time and cause
+closure_time <- pmin(T1, T2)
+event_type <- ifelse(T1 < T2, 1, 2)  # 1 = repayment, 2 = default
 
 # Final dataset
-simulated_data <- data.frame(default_time, event_type)
+simulated_data <- data.frame(closure_time, event_type)
 head(simulated_data)
 ```
 
@@ -509,29 +510,29 @@ A scatterplot of copula samples (u1, u2) illustrates the dependence structure im
 plot(u, main = "Copula Samples (Clayton)", xlab = "u1", ylab = "u2", pch = 20, col = rgb(0, 0, 1, 0.2))
 ```
 
-### Visualize Default Times by Event Type
+### Visualize Closure Times by Event Type
 
-A histogram of default times colored by event type shows the distribution of observed failures from firm-specific and systemic causes.
+A histogram of closure times colored by event type shows the distribution of observed closures from repayment and default.
 
-```{r default-time-hist}
-# histogram_closure_times.png
-ggplot(simulated_data, aes(x = default_time, fill = factor(event_type))) +
+```{r closure-time-hist}
+# histogram_closure_times2.png
+ggplot(simulated_data, aes(x = closure_time, fill = factor(event_type))) +
   geom_histogram(position = "identity", bins = 50, alpha = 0.6) +
-  labs(title = "Histogram of Default Times", x = "Time", y = "Count", fill = "Event Type") +
+  labs(title = "Histogram of Closure Times", x = "Time", y = "Count", fill = "Event Type") +
   scale_fill_manual(values = c("steelblue", "tomato"),
-                    labels = c("Firm-specific", "Systemic"))
+                    labels = c("Repayment", "Default"))
 ```
 
 ## Fit Marginals
 
-### Extract and Fit Distributions to Each Failure Cause
+### Extract and Fit Distributions to Each Closure Cause
 
 We split the simulated data into two groups by event type and fit several candidate distributions to each. Model selection is based on AIC, and we use shape and AIC difference tolerances to determine if an exponential fit can acceptably replace a Weibull.
 
 ```{r fit-marginals}
 # Extract marginals by event type
-firm_specific <- subset(simulated_data, event_type == 1)$default_time
-systemic      <- subset(simulated_data, event_type == 2)$default_time
+repayment <- subset(simulated_data, event_type == 1)$closure_time
+default   <- subset(simulated_data, event_type == 2)$closure_time
 
 # Candidate distributions
 fit_candidates <- c("exp", "weibull", "gamma", "lnorm")
@@ -564,12 +565,12 @@ fit_dist <- function(data) {
 }
 
 # Apply fitting function to each cause
-fit_firm     <- fit_dist(firm_specific)
-fit_systemic <- fit_dist(systemic)
+fit_repayment <- fit_dist(repayment)
+fit_default   <- fit_dist(default)
 
 # Output best-fitting distribution for each cause
-cat("Firm-specific best fit:", fit_firm$best_fit, "\n")
-cat("Systemic best fit:", fit_systemic$best_fit, "\n")
+cat("Repayment best fit:", fit_repayment$best_fit, "\n")
+cat("Default best fit:", fit_default$best_fit, "\n")
 ```
 
 ### Visualize Q-Q Plots of Fitted Marginals
@@ -579,18 +580,18 @@ These plots help visually assess how well the fitted distributions match the emp
 ```{r qq-plots}
 par(mfrow = c(1, 2))
 
-# qqplot.png
-# Firm-specific Q-Q plot
-qqplot(qexp(ppoints(length(firm_specific)), rate = fit_firm$parameters["rate"]),
-       firm_specific,
-       main = "Q-Q Plot: Firm-specific",
+# Repayment Q-Q plot
+# qqplot2.png
+qqplot(qexp(ppoints(length(repayment)), rate = fit_repayment$parameters["rate"]),
+       repayment,
+       main = "Q-Q Plot: Repayment",
        xlab = "Theoretical Quantiles", ylab = "Sample Quantiles")
 abline(0, 1, col = "red")
 
-# Systemic Q-Q plot
-qqplot(qexp(ppoints(length(systemic)), rate = fit_systemic$parameters["rate"]),
-       systemic,
-       main = "Q-Q Plot: Systemic",
+# Default Q-Q plot
+qqplot(qexp(ppoints(length(default)), rate = fit_default$parameters["rate"]),
+       default,
+       main = "Q-Q Plot: Default",
        xlab = "Theoretical Quantiles", ylab = "Sample Quantiles")
 abline(0, 1, col = "red")
 ```
@@ -624,7 +625,7 @@ loglik_full <- function(params, data) {
   
   log_lik <- 0
   for (i in 1:nrow(data)) {
-    t    <- data$default_time[i]
+    t    <- data$closure_time[i]
     type <- data$event_type[i]
     
     F1 <- 1 - exp(-lambda1 * t)
@@ -775,21 +776,22 @@ This synthetic implementation serves as a controlled environment to test and dem
 
 ### Simulation Design
 
-We generated 10,000 observations representing time-to-event data for two competing risks: **firm-specific failure** and **systemic failure**. Dependence between the two failure types was introduced using a **Clayton copula** with a known parameter of **θ = 2**, chosen for its ability to model **lower tail dependence** — appropriate for scenarios where early failure in one cause increases the risk of failure in another.
+We generated 10,000 observations representing time-to-event data for two competing risks: **loan repayment** and **loan default**. Dependence between the two failure types was introduced using a **Clayton copula** with a known parameter of **θ = 2**, chosen for its ability to model **lower tail dependence** — appropriate for scenarios where early failure in one increases the risk of failure in another.
 
-The marginal distributions for both risks were set to **exponential**, with **λ₁ = 4** for firm-specific failure and **λ₂ = 2.5** for systemic failure. Observed default times were the minimum of the two, with the cause recorded as the corresponding event type.
+The marginal distributions for both risks were set to **exponential**, with **λ₁ = 4** for repayment and **λ₂ = 2.5** for default. Observed closure times were the minimum of the two, with the cause recorded as the corresponding event type.
 
 ### Key Observations from Visuals
 
 -   **Copula Scatterplot**: The Clayton copula generated clear lower tail dependence, visible as clustering in the bottom-left of the u1–u2 scatterplot.
 
--   **Histogram of Default Times**: Firm-specific failures dominated early in the timeline, while systemic events occurred more evenly across time, consistent with their lower hazard rate.
+-   **Histogram of Closure Times**: Repayments dominated early in the timeline, while default events occurred more evenly across time, consistent with their lower hazard rate.
 
 -   **Q-Q Plots**: Exponential distribution assumptions for both causes were visually supported. The points closely followed the theoretical line, with only mild deviation in the upper tail, confirming good model fit.
 
 -   **Bootstrap Histograms**: The distributions of bootstrap estimates for θ, λ₁, and λ₂ were all centered near their true values, with low spread.
 
 ### Comparison of MLE, Bootstrap, and True Values
+
 (comparison.jpeg)
 
 |               |                |                  |                    |
