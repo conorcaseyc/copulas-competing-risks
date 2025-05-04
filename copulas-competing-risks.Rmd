@@ -15,10 +15,11 @@ library(ggplot2)
 set.seed(6)
 ```
 
+# Part 1: Frank Copula & Gamma Marginals
 
-# Data Generation
+## Data Generation
 
-## Generate Synthetic Data with Frank Copula
+### Generate Synthetic Data with Frank Copula
 
 We examine the use of a Frank copula to model dependency between two competing risks: loan default (the borrower failing to pay) and loan repayment (the borrower successfully repaying the loan in full). The Frank copula provides a symmetric dependence structure, meaning that dependence is modelled evenly across the entire distribution — neither early nor late loan closures are disproportionately influential.
 
@@ -36,7 +37,7 @@ gamma_rate2  <- 4
 n <- 10000
 ```
 
-## Visualise Copula Dependence
+### Visualise Copula Dependence
 
 A scatterplot of the sampled copula pairs $(u_1, u_2)$ confirms the symmetric nature of the Frank copula. There is no strong clustering in the tails — instead, points are evenly dispersed around the diagonal, suggesting uniform correlation across the support. This aligns with the Frank copula’s property of no tail dependence, but still permits moderate association between components.
 
@@ -66,7 +67,7 @@ plot(u, main = "Copula Samples (Frank)", xlab = "u1", ylab = "u2", pch = 20, col
 
 
 
-## Visualise Closure Times by Event Type
+### Visualise Closure Times by Event Type
 
 A histogram of closure times coloured by event type shows the distribution of observed loan closures from loan default and loan repayment. Because both marginals are identically distributed, the differentiation between causes is driven entirely by the dependency structure introduced by the copula, where the distribution of causes is more balanced over time.
 
@@ -82,9 +83,9 @@ ggplot(simulated_data, aes(x = closure_time, fill = factor(event_type))) +
 ```
 
 
-# Fit Marginals
+## Fit Marginals
 
-## Extract and Fit Distributions to Each Loan Closure Cause
+### Extract and Fit Distributions to Each Loan Closure Cause
 
 Fitting the marginals for each loan closure cause using a selection of candidate distributions (exponential, weibull, gamma, and log-normal), the gamma distribution was correctly identified as the best fit in both cases. This allows us to move forward with parameter estimation under correct distributional assumptions.
 
@@ -128,7 +129,7 @@ cat("Loan Repayment gamma fit: shape =", fit_repayment$parameters["shape"],
 ```
 
 
-## Visualise Q-Q Plots of Fitted Marginals
+### Visualise Q-Q Plots of Fitted Marginals
 
 These plots help visually assess how well the fitted distributions match the empirical data.
 
@@ -155,11 +156,11 @@ abline(0, 1, col = "red")
 
 # qqplots2.png
 ```
-# Estimate Parameters
+## Estimate Parameters
 
 The Frank copula was chosen for this stage of the model because it captures symmetric dependence between risks, meaning that association between loan closure times is modelled consistently across the entire distribution, rather than being concentrated in the tails. This makes it particularly appropriate for competing risks scenarios where the interaction between loan closure types is not limited to early or extreme events.
 
-## Single Parameter Estimate (MLE)
+### Single Parameter Estimate (MLE)
 
 We estimate the copula dependence parameter ($\theta$), shape parameters $(\alpha_1, \alpha_2)$ and rate parameters $(\beta_1, \beta_2)$ for the Gamma distributions using maximum likelihood estimation on the full synthetic data set.
 
@@ -237,7 +238,7 @@ result <- optim(par = init_params,
                 lower = lower_bounds,
                 upper = upper_bounds)
 
-# Estimated parameters
+## Estimated parameters
 cat("Estimated theta:   ", result$par[1], "\n")
 cat("Estimated shape1:  ", result$par[2], "\n")
 cat("Estimated rate1:   ", result$par[3], "\n")
@@ -258,7 +259,7 @@ cat("True rate2:   ", gamma_rate2, "\n")
 
 
 
-## Parameter Distribution (Bootstrap)
+### Parameter Distribution (Bootstrap)
 
 To assess uncertainty in the parameter estimates, we use bootstrap resampling. This gives a distribution of estimates for $\theta, \alpha_1, \beta_1, \alpha_2,$ and $\beta_2$.
 
@@ -320,7 +321,7 @@ boot_df_means
 ```
 
 
-## Visualise Parameter Estimates
+### Visualise Parameter Estimates
 
 We now visualise the distribution of bootstrap estimates for each parameter. Each plot includes a black dashed line for the known true value used to generate the synthetic data, and a red solid line representing the MLE point estimate from the full dataset. A legend is included for clarity.
 
@@ -387,13 +388,13 @@ legend("topright", legend = c("True Value", "MLE Estimate"),
 
 
 
-# Discussion
+## Discussion
 
-## Role in the Project
+### Role in the Project
 
 This synthetic implementation serves as a controlled environment to test and demonstrate the use of copulas — specifically the Frank copula — in modelling competing risks. By simulating data with known dependence and marginal characteristics, we were able to assess the accuracy of parameter estimation methods and validate their performance before applying them to real-world data.
 
-## Simulation Design
+### Simulation Design
 
 We generated 10,000 observations representing time-to-event data for two competing risks: **loan defaults** and **loan repayments**. Dependence between the two loan closure types was introduced using a **Frank copula** with a known parameter of **θ = 2**, chosen for its ability to model **symmetric dependence** — appropriate for scenarios where shared risk factors influence both causes consistently over time, without concentrating in the tails.
 
@@ -402,7 +403,7 @@ The marginal distributions for both risks were set to **gamma**, with $\alpha_1 
 
 
 
-## Key Observations from Visuals
+### Key Observations from Visuals
 
 -   **Copula Scatterplot**: The Frank copula generated balanced dependence, visible as even dispersion around the diagonal in the $u_1–u_2$ scatterplot, without clustering in the tails.
 
@@ -412,7 +413,7 @@ The marginal distributions for both risks were set to **gamma**, with $\alpha_1 
 
 -   **Bootstrap Histograms**: The distributions of bootstrap estimates for $\theta, \alpha_1, \beta_1, \alpha_2$ and $\beta_2$ were all centred near the MLE estimates with low spread. Visuals included the true parameter values and MLE estimates for reference.
 
-## Comparison of MLE, Bootstrap, and True Values
+### Comparison of MLE, Bootstrap, and True Values
 
 |               |                |                  |                    |
 |---------------|----------------|------------------|--------------------|
@@ -433,7 +434,7 @@ The marginal distributions for both risks were set to **gamma**, with $\alpha_1 
 
 
 
-## Conclusion
+### Conclusion
 
 This synthetic implementation demonstrated that copula-based competing risks models can reasonably recover marginal and dependence parameters when using the Frank copula, though with increased estimation uncertainty. The results support the viability of using Frank copulas for modelling symmetric dependence, particularly in scenarios without strong tail effects.
 
