@@ -238,7 +238,7 @@ result <- optim(par = init_params,
                 lower = lower_bounds,
                 upper = upper_bounds)
 
-## Estimated parameters
+# Estimated parameters
 cat("Estimated theta:   ", result$par[1], "\n")
 cat("Estimated shape1:  ", result$par[2], "\n")
 cat("Estimated rate1:   ", result$par[3], "\n")
@@ -505,6 +505,7 @@ head(simulated_data)
 A scatterplot of copula samples (u1, u2) illustrates the dependence structure imposed by the Clayton copula.
 
 ```{r copula-scatterplot}
+# clayton_scatter.png
 plot(u, main = "Copula Samples (Clayton)", xlab = "u1", ylab = "u2", pch = 20, col = rgb(0, 0, 1, 0.2))
 ```
 
@@ -513,6 +514,7 @@ plot(u, main = "Copula Samples (Clayton)", xlab = "u1", ylab = "u2", pch = 20, c
 A histogram of default times colored by event type shows the distribution of observed failures from firm-specific and systemic causes.
 
 ```{r default-time-hist}
+# histogram_closure_times.png
 ggplot(simulated_data, aes(x = default_time, fill = factor(event_type))) +
   geom_histogram(position = "identity", bins = 50, alpha = 0.6) +
   labs(title = "Histogram of Default Times", x = "Time", y = "Count", fill = "Event Type") +
@@ -578,6 +580,7 @@ These plots help visually assess how well the fitted distributions match the emp
 par(mfrow = c(1, 2))
 
 # Firm-specific Q-Q plot
+# qqplot.png
 qqplot(qexp(ppoints(length(firm_specific)), rate = fit_firm$parameters["rate"]),
        firm_specific,
        main = "Q-Q Plot: Firm-specific",
@@ -585,6 +588,7 @@ qqplot(qexp(ppoints(length(firm_specific)), rate = fit_firm$parameters["rate"]),
 abline(0, 1, col = "red")
 
 # Systemic Q-Q plot
+# qqplot2.png
 qqplot(qexp(ppoints(length(systemic)), rate = fit_systemic$parameters["rate"]),
        systemic,
        main = "Q-Q Plot: Systemic",
@@ -728,6 +732,7 @@ mle_lambda2 <- result$par[3]
 boot_df <- as.data.frame(boot_results)
 
 # Theta
+# theta.png
 hist(boot_df$theta, breaks = 30, col = "lightblue",
      main = expression(paste("Theta Estimates")),
      xlab = expression(theta))
@@ -739,6 +744,7 @@ legend("topright", legend = c("True Value", "MLE Estimate"),
        col = c("black", "red"), lty = c(2, 2), lwd = 2)
 
 # Lambda1
+# lambda1.png
 hist(boot_df$lambda1, breaks = 30, col = "lightgreen",
      main = expression(paste("Lambda[1] Estimates")),
      xlab = expression(lambda[1]))
@@ -750,6 +756,7 @@ legend("topright", legend = c("True Value", "MLE Estimate"),
        col = c("black", "red"), lty = c(2, 2), lwd = 2)
 
 # Lambda2
+# lambda2.png
 hist(boot_df$lambda2, breaks = 30, col = "salmon",
      main = expression(paste("Lambda[2] Estimates")),
      xlab = expression(lambda[2]))
