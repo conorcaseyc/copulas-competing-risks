@@ -579,8 +579,8 @@ These plots help visually assess how well the fitted distributions match the emp
 ```{r qq-plots}
 par(mfrow = c(1, 2))
 
-# Firm-specific Q-Q plot
 # qqplot.png
+# Firm-specific Q-Q plot
 qqplot(qexp(ppoints(length(firm_specific)), rate = fit_firm$parameters["rate"]),
        firm_specific,
        main = "Q-Q Plot: Firm-specific",
@@ -588,7 +588,6 @@ qqplot(qexp(ppoints(length(firm_specific)), rate = fit_firm$parameters["rate"]),
 abline(0, 1, col = "red")
 
 # Systemic Q-Q plot
-# qqplot2.png
 qqplot(qexp(ppoints(length(systemic)), rate = fit_systemic$parameters["rate"]),
        systemic,
        main = "Q-Q Plot: Systemic",
@@ -791,6 +790,7 @@ The marginal distributions for both risks were set to **exponential**, with **λ
 -   **Bootstrap Histograms**: The distributions of bootstrap estimates for θ, λ₁, and λ₂ were all centered near their true values, with low spread.
 
 ### Comparison of MLE, Bootstrap, and True Values
+(comparison.jpeg)
 
 |               |                |                  |                    |
 |---------------|----------------|------------------|--------------------|
