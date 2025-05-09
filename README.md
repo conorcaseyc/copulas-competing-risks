@@ -10,5 +10,5 @@ This project explores the application of copula models to analyze the dependency
 - Fitted marginal distributions (Gamma, Exponential, Weibull, and Mixture Models)
 - Joint likelihood construction and **maximum likelihood estimation (MLE)**
 - **Bootstrap procedures** to assess parameter uncertainty
-- Real-world application to over 2 million Lending Club loans
+- Real-world application to Lending Club loans
 - Comparative evaluation of **Gumbel**, **Frank**, and **Clayton** copulas
